@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brennholz – Bestell- & Lagerverwaltung</title>
+  <style>
+    :root {
+      --bg: #0f172a; /* slate-900 */
+      --panel: #111827; /* gray-900 */
+      --muted: #1f2937; /* gray-800 */
+      --text: #e5e7eb; /* gray-200 */
+      --sub: #9ca3af; /* gray-400 */
+      --brand: #22c55e; /* green-500 */
+      --brand-2: #06b6d4; /* cyan-500 */
+      --danger: #ef4444; /* red-500 */
+      --warn: #f59e0b; /* amber-500 */
+      --ok: #10b981; /* emerald-500 */
+      --radius: 14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 80% -10%, #1e293b 0%, var(--bg) 50%);
+      color: var(--text);
+    }
+    .wrap{max-width:1100px;margin:32px auto;padding:0 16px}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+    h1{font-size:28px;margin:0}
+    .pill{padding:6px 10px;background:var(--muted);border-radius:999px;color:var(--sub);font-size:12px}
+
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{border:1px solid #263042;background:#0b1220;color:var(--text);padding:10px 14px;border-radius:999px;cursor:pointer;font-weight:600;opacity:.7}
+    .tab.active{background:linear-gradient(135deg, #0ea5e9, #22c55e); border-color:transparent; color:white; opacity:1}
+
+    .grid{display:grid;gap:16px}
+    @media(min-width:900px){.grid{grid-template-columns: 1.2fr 1fr}}
+
+    .card{background: #0b1220; border:1px solid #1f2a44; border-radius: var(--radius); padding:16px; box-shadow:0 6px 24px rgba(0,0,0,.25)}
+    .card h2{margin:0 0 12px 0;font-size:18px}
+
+    label{display:block;font-size:12px;color:var(--sub);margin-bottom:6px}
+    input[type="text"], input[type="number"], select{width:100%;padding:10px;border-radius:10px;border:1px solid #24314d;background:#0a1325;color:var(--text)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    button{border:none;padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer}
+    .btn{background:var(--brand);color:#00210e}
+    .btn.secondary{background:#1f2a44;color:var(--text)}
+    .btn.warn{background:var(--warn);color:#3b2300}
+    .btn.danger{background:var(--danger);color:white}
+    .btn.ghost{background:transparent;color:var(--sub);border:1px dashed #2a385d}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #1f2a44;text-align:left}
+    th{color:#c5d0e6;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+    tr.total td{font-weight:800}
+
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
+    .badge.ok{background:#052e1e;color:#34d399;border:1px solid #064e3b}
+    .badge.low{background:#3a1a00;color:#fbbf24;border:1px solid #8a4b16}
+    .badge.zero{background:#3b0d0d;color:#fca5a5;border:1px solid #7f1d1d}
+
+    .footer{margin-top:20px;color:var(--sub);font-size:12px}
+    .hint{font-size:12px;color:var(--sub)}
+    .right{float:right}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+    .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🔥 Brennholz – Bestell- & Lagerverwaltung</h1>
+      <span class="pill">statische HTML-App (LocalStorage)</span>
+    </header>
+
+    <div class="tabs" id="tabs"></div>
+
+    <!-- INVENTAR -->
+    <section class="grid tabpanel hidden" data-tab="Inventar">
+      <div class="card">
+        <h2>Artikel anlegen / bearbeiten</h2>
+        <div class="row">
+          <div>
+            <label>Artikelname</label>
+            <input id="item-name" type="text" placeholder="z.B. Buche 25cm" />
+          </div>
+          <div>
+            <label>Einheit</label>
+            <input id="item-unit" type="text" value="rm" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Einzelpreis</label>
+            <input id="item-price" type="number" step="0.01" min="0" value="100" />
+          </div>
+          <div>
+            <label>Bestand</label>
+            <input id="item-stock" type="number" step="0.001" min="0" value="0" />
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="btn-add-item">Speichern / Hinzufügen</button>
+          <button class="btn secondary" id="btn-clear-item">Formular leeren</button>
+        </div>
+        <p class="hint">Tipp: Klicke in der Tabelle auf einen Artikel, um ihn zur Bearbeitung zu laden.</p>
+      </div>
+
+      <div class="card">
+        <h2>Artikelbestand</h2>
+        <div class="actions">
+          <button class="btn ghost" id="btn-load-demo">Demo-Daten laden</button>
+          <button class="btn warn" id="btn-export">Export JSON</button>
+          <label class="btn secondary" for="import-file" style="cursor:pointer">Import JSON<input id="import-file" type="file" accept="application/json" class="hidden"/></label>
+          <button class="btn danger" id="btn-reset">Alles löschen</button>
+        </div>
+        <table id="items-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Name</th><th>Einheit</th><th>Einzelpreis</th><th>Bestand</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- BESTELLUNG -->
+    <section class="grid tabpanel" data-tab="Bestellung">
+      <div class="card">
+        <h2>Neue Bestellung</h2>
+        <div class="row">
+          <div>
+            <label>Benutzer</label>
+            <input id="order-user" type="text" placeholder="z.B. max" />
+          </div>
+          <div>
+            <label>Datum</label>
+            <input id="order-date" type="text" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Artikel</label>
+            <select id="order-item"></select>
+          </div>
+          <div>
+            <label>Menge</label>
+            <input id="order-qty" type="number" step="0.001" min="0.001" value="1" />
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="btn-add-line">Position hinzufügen</button>
+          <button class="btn secondary" id="btn-clear-lines">Positionen leeren</button>
+        </div>
+
+        <table id="order-lines">
+          <thead>
+            <tr>
+              <th>Artikel</th><th>Menge</th><th>EP</th><th>Summe</th><th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr class="total"><td colspan="3">Gesamt</td><td id="order-total" class="mono">0.00</td><td></td></tr>
+          </tfoot>
+        </table>
+
+        <div class="actions">
+          <button class="btn" id="btn-place-order">Bestellung speichern</button>
+        </div>
+        <p class="hint">Die App verhindert Überbestellungen und reduziert bei Erfolg den Lagerbestand.</p>
+      </div>
+
+      <div class="card">
+        <h2>Bestellungen</h2>
+        <table id="orders-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Datum</th><th>Benutzer</th><th>Gesamt</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section class="grid tabpanel hidden" data-tab="Reports">
+      <div class="card">
+        <h2>Report: Bestellungen je Benutzer</h2>
+        <div class="actions">
+          <button class="btn secondary" id="btn-refresh-report">Neu berechnen</button>
+        </div>
+        <table id="report-table">
+          <thead>
+            <tr>
+              <th>Benutzer</th><th>Gesamtmenge</th><th>Gesamtumsatz</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Details je Benutzer & Artikel</h2>
+        <table id="report-details">
+          <thead>
+            <tr>
+              <th>Benutzer</th><th>Artikel</th><th>Menge</th><th>Umsatz</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="footer">Speicherung lokal im Browser (LocalStorage). Für Mehrbenutzerbetrieb benötigst du später ein Backend.
+      <span class="right">v0.1</span>
+    </p>
+  </div>
+
+<script>
+// --- Datenhaltung (LocalStorage) ------------------------------------------------
+const KEY = 'brennholz_app_v01';
+const state = load();
+
+function load(){
+  const raw = localStorage.getItem(KEY);
+  if(!raw){
+    return { seq: 1, items: [], orders: [] };
+  }
+  try { return JSON.parse(raw); } catch(e){ return { seq: 1, items: [], orders: [] }; }
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+function nextId(){ return state.seq++; }
+
+// --- Utils ---------------------------------------------------------------------
+const fmtMoney = n => (Math.round((n + Number.EPSILON)*100)/100).toFixed(2);
+const fmtQty = n => (Math.round((n + Number.EPSILON)*1000)/1000).toFixed(3);
+function nowISO(){ return new Date().toISOString(); }
+function byId(id){ return document.getElementById(id); }
+
+// --- Tabs ----------------------------------------------------------------------
+const TABS = ['Inventar','Bestellung','Reports'];
+const tabsEl = byId('tabs');
+TABS.forEach(name=>{
+  const b = document.createElement('button');
+  b.className = 'tab'+(name==='Bestellung'?' active':'');
+  b.textContent = name;
+  b.onclick = ()=> setTab(name);
+  tabsEl.appendChild(b);
+});
+function setTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.textContent===name));
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('hidden', p.dataset.tab!==name));
+}
+
+// --- Inventar ------------------------------------------------------------------
+const itemsTableBody = document.querySelector('#items-table tbody');
+const orderItemSelect = byId('order-item');
+let editItemId = null;
+
+function renderItems(){
+  itemsTableBody.innerHTML = '';
+  orderItemSelect.innerHTML = '';
+  state.items
+    .slice()
+    .sort((a,b)=> a.name.localeCompare(b.name))
+    .forEach(it=>{
+      const tr = document.createElement('tr');
+      const status = it.stock_qty <= 0 ? 'zero' : (it.stock_qty < 5 ? 'low' : 'ok');
+      tr.innerHTML = `
+        <td class="mono">${it.id}</td>
+        <td class="item-click" data-id="${it.id}" style="cursor:pointer">${it.name}</td>
+        <td>${it.unit}</td>
+        <td class="mono">${fmtMoney(it.unit_price)}</td>
+        <td class="mono">${fmtQty(it.stock_qty)}</td>
+        <td><span class="badge ${status}">${status.toUpperCase()}</span></td>`;
+      itemsTableBody.appendChild(tr);
+
+      const opt = document.createElement('option');
+      opt.value = it.id; opt.textContent = `${it.name} – ${fmtMoney(it.unit_price)} / ${it.unit}`;
+      orderItemSelect.appendChild(opt);
+    });
+
+  itemsTableBody.querySelectorAll('.item-click').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const id = Number(el.dataset.id);
+      loadItemToForm(id);
+    });
+  });
+}
+
+function loadItemToForm(id){
+  const it = state.items.find(i=>i.id===id); if(!it) return;
+  editItemId = id;
+  byId('item-name').value = it.name;
+  byId('item-unit').value = it.unit;
+  byId('item-price').value = it.unit_price;
+  byId('item-stock').value = it.stock_qty;
+}
+
+byId('btn-add-item').onclick = ()=>{
+  const name = byId('item-name').value.trim();
+  const unit = byId('item-unit').value.trim() || 'rm';
+  const price = Number(byId('item-price').value);
+  const stock = Number(byId('item-stock').value);
+  if(!name || isNaN(price) || price<0 || isNaN(stock) || stock<0){
+    alert('Bitte gültige Werte eingeben.'); return;
+  }
+  if(editItemId){
+    const it = state.items.find(i=>i.id===editItemId);
+    if(!it) return; 
+    it.name=name; it.unit=unit; it.unit_price=price; it.stock_qty=stock;
+  } else {
+    if(state.items.some(i=>i.name.toLowerCase()===name.toLowerCase())){
+      alert('Artikelname existiert bereits.'); return;
+    }
+    state.items.push({ id: nextId(), name, unit, unit_price: price, stock_qty: stock });
+  }
+  save(); renderItems(); clearItemForm();
+}
+
+byId('btn-clear-item').onclick = clearItemForm;
+function clearItemForm(){ editItemId=null; ['item-name','item-unit','item-price','item-stock'].forEach(id=>byId(id).value=''); }
+
+byId('btn-load-demo').onclick = ()=>{
+  if(!confirm('Demo-Daten laden? (überschreibt aktuelle Artikel nicht, fügt nur hinzu)')) return;
+  const demo = [
+    {name:'Brennholz Buche 25cm', unit:'rm', unit_price:110, stock_qty:20},
+    {name:'Brennholz Eiche 33cm', unit:'rm', unit_price:100, stock_qty:15},
+    {name:'Anzündholz', unit:'kg', unit_price:1.5, stock_qty:500},
+  ];
+  demo.forEach(d=>{
+    if(!state.items.some(i=>i.name.toLowerCase()===d.name.toLowerCase())){
+      state.items.push({ id: nextId(), ...d });
+    }
+  });
+  save(); renderItems(); renderOrderSelect();
+};
+
+byId('btn-export').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'brennholz_export.json'; a.click();
+  URL.revokeObjectURL(url);
+};
+
+byId('import-file').addEventListener('change', ev=>{
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try { const data = JSON.parse(reader.result);
+      if(!data || !Array.isArray(data.items) || !Array.isArray(data.orders)) throw new Error();
+      Object.assign(state, data);
+      save(); renderAll();
+    } catch(e){ alert('Ungültige JSON-Datei.'); }
+  };
+  reader.readAsText(file);
+});
+
+byId('btn-reset').onclick = ()=>{
+  if(!confirm('Wirklich alle Daten löschen?')) return;
+  localStorage.removeItem(KEY); location.reload();
+};
+
+function renderOrderSelect(){
+  // already filled in renderItems
+}
+
+// --- Bestellungen --------------------------------------------------------------
+const orderLinesBody = document.querySelector('#order-lines tbody');
+let tempLines = []; // {itemId, qty, name, unit, unit_price, line_total}
+
+byId('order-date').value = new Date().toLocaleString();
+
+byId('btn-add-line').onclick = ()=>{
+  const itemId = Number(byId('order-item').value);
+  const qty = Number(byId('order-qty').value);
+  const it = state.items.find(i=>i.id===itemId);
+  if(!it){ alert('Bitte Artikel auswählen.'); return; }
+  if(isNaN(qty) || qty<=0){ alert('Menge muss > 0 sein.'); return; }
+
+  // Prüfen: Summe gleicher Positionen + neue Menge darf Bestand nicht überschreiten
+  const already = tempLines.filter(l=>l.itemId===itemId).reduce((s,l)=>s+l.qty, 0);
+  if(qty + already > it.stock_qty){
+    alert(`Nicht genug Bestand für ${it.name}. Verfügbar: ${fmtQty(it.stock_qty)}.`); return;
+  }
+
+  const line_total = qty * it.unit_price;
+  tempLines.push({ itemId, qty, name: it.name, unit: it.unit, unit_price: it.unit_price, line_total });
+  renderOrderLines();
+};
+
+byId('btn-clear-lines').onclick = ()=>{ tempLines = []; renderOrderLines(); };
+
+function renderOrderLines(){
+  orderLinesBody.innerHTML = '';
+  let total = 0;
+  tempLines.forEach((l, idx)=>{
+    total += l.line_total;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${l.name}</td>
+      <td class="mono">${fmtQty(l.qty)} ${l.unit}</td>
+      <td class="mono">${fmtMoney(l.unit_price)}</td>
+      <td class="mono">${fmtMoney(l.line_total)}</td>
+      <td><button class="btn secondary" data-idx="${idx}">Entfernen</button></td>`;
+    orderLinesBody.appendChild(tr);
+  });
+  document.getElementById('order-total').textContent = fmtMoney(total);
+  orderLinesBody.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = Number(btn.dataset.idx);
+      tempLines.splice(i,1); renderOrderLines();
+    });
+  });
+}
+
+byId('btn-place-order').onclick = ()=>{
+  if(tempLines.length===0){ alert('Keine Positionen.'); return; }
+  const user = byId('order-user').value.trim() || 'unbekannt';
+
+  // Finale Lagerprüfung (gegen Race im Single-User Setup fast egal, aber korrekt)
+  const needed = {};
+  tempLines.forEach(l=> needed[l.itemId] = (needed[l.itemId]||0) + l.qty);
+  for(const [idStr, q] of Object.entries(needed)){
+    const id = Number(idStr);
+    const it = state.items.find(i=>i.id===id);
+    if(!it || q>it.stock_qty){
+      alert(`Nicht genug Bestand für ${it?it.name:'?'} (benötigt ${fmtQty(q)}, verfügbar ${it?fmtQty(it.stock_qty):'0'}).`);
+      return;
+    }
+  }
+
+  // Bestellung speichern & Bestand reduzieren
+  const orderId = nextId();
+  const created_at = nowISO();
+  let total = 0;
+  const items = tempLines.map(l=>{
+    const line = { item_id: l.itemId, qty: l.qty, unit_price: l.unit_price, line_total: l.line_total };
+    total += l.line_total; return line;
+  });
+  state.orders.push({ id: orderId, user: user, created_at, total_price: total, items });
+  // Lager anpassen
+  for(const [idStr, q] of Object.entries(needed)){
+    const it = state.items.find(i=>i.id===Number(idStr));
+    it.stock_qty = Math.max(0, (it.stock_qty - q));
+  }
+  save();
+  tempLines = [];
+  renderOrderLines(); renderItems(); renderOrders(); renderReport();
+  alert(`Bestellung #${orderId} gespeichert. Gesamt: ${fmtMoney(total)} €`);
+};
+
+// --- Orders Ansicht ------------------------------------------------------------
+const ordersBody = document.querySelector('#orders-table tbody');
+function renderOrders(){
+  ordersBody.innerHTML = '';
+  state.orders
+    .slice()
+    .sort((a,b)=> b.created_at.localeCompare(a.created_at))
+    .forEach(o=>{
+      const tr = document.createElement('tr');
+      const date = new Date(o.created_at).toLocaleString();
+      tr.innerHTML = `<td class="mono">${o.id}</td><td>${date}</td><td>${o.user}</td><td class="mono">${fmtMoney(o.total_price)}</td>`;
+      ordersBody.appendChild(tr);
+    });
+}
+
+// --- Reports ------------------------------------------------------------------
+const reportBody = document.querySelector('#report-table tbody');
+const reportDetailsBody = document.querySelector('#report-details tbody');
+
+function renderReport(){
+  const agg = {}; // user -> {qty, rev, details: {itemName:{qty, rev}}}
+  state.orders.forEach(o=>{
+    o.items.forEach(oi=>{
+      const it = state.items.find(i=>i.id===oi.item_id);
+      const uname = o.user;
+      const entry = agg[uname] || (agg[uname] = {qty:0, rev:0, details:{}});
+      entry.qty += oi.qty;
+      entry.rev += oi.line_total;
+      const key = it ? it.name : `Item#${oi.item_id}`;
+      const det = entry.details[key] || (entry.details[key] = {qty:0, rev:0});
+      det.qty += oi.qty; det.rev += oi.line_total;
+    });
+  });
+
+  const rows = Object.entries(agg).map(([user, v])=>({user, qty:v.qty, rev:v.rev, details:v.details}))
+    .sort((a,b)=> b.rev - a.rev);
+
+  reportBody.innerHTML = '';
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.user}</td><td class="mono">${fmtQty(r.qty)}</td><td class="mono">${fmtMoney(r.rev)}</td>`;
+    reportBody.appendChild(tr);
+  });
+
+  reportDetailsBody.innerHTML = '';
+  rows.forEach(r=>{
+    Object.entries(r.details).sort((a,b)=> b[1].rev - a[1].rev).forEach(([name, val])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.user}</td><td>${name}</td><td class="mono">${fmtQty(val.qty)}</td><td class="mono">${fmtMoney(val.rev)}</td>`;
+      reportDetailsBody.appendChild(tr);
+    });
+  });
+}
+
+// --- Init ---------------------------------------------------------------------
+function renderAll(){ renderItems(); renderOrders(); renderReport(); }
+renderAll();
+
+// Fill order select when switching tabs or after changes
+function onTabSwitch(){ renderItems(); }
+
+// Keep order date in sync with local time for new orders
+setInterval(()=>{ if(document.activeElement!==byId('order-date')) byId('order-date').value = new Date().toLocaleString(); }, 1000);
+
+// Refresh report
+byId('btn-refresh-report').onclick = ()=> renderReport();
+</script>
+</body>
+</html>
